@@ -22,7 +22,7 @@ it('applies itself and gives forms their admin resource', function () {
         ->and(array_map(
             static fn ($capability): string => $capability->id(),
             app(TagixoPrimixPlugin::class)->resolveCapabilities(),
-        ))->toBe(['form-builder'])
+        ))->toContain('form-builder')
         ->and(app(TagixoPrimixPlugin::class)->resolveResources())->toHaveKey('forms');
 });
 
@@ -64,7 +64,12 @@ it('does nothing at all when the panel drops the capability', function () {
     TestPanelProvider::$configure = fn (TagixoPrimixPlugin $plugin) => $plugin->withoutCapability('form-builder');
     $this->refreshApplication();
 
-    expect(app(TagixoPrimixPlugin::class)->resolveCapabilities())->toBe([])
+    $ids = array_map(
+        static fn ($capability): string => $capability->id(),
+        app(TagixoPrimixPlugin::class)->resolveCapabilities(),
+    );
+
+    expect($ids)->not->toContain('form-builder')
         ->and(app(FormBuilder::class)->appFormsEnabled())->toBeFalse()
         ->and(app(FormBuilder::class)->hasAppFormPreviewer())->toBeFalse()
         // The records are still administered: a capability is not a resource.

@@ -62,6 +62,7 @@ return [
         'mails' => 'pi pi-envelope',
         'documents' => 'pi pi-file-pdf',
         'sliders' => 'pi pi-images',
+        'media' => 'pi pi-images',
     ],
 
 ];

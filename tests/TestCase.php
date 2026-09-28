@@ -83,6 +83,7 @@ abstract class TestCase extends Orchestra
     protected function tearDown(): void
     {
         TestPanelProvider::$configure = null;
+        TestPanelProvider::$panelResources = [];
         static::$extraProviders = [];
 
         parent::tearDown();

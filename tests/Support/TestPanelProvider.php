@@ -19,6 +19,13 @@ class TestPanelProvider extends PanelProvider
      */
     public static $configure = null;
 
+    /**
+     * Resources the panel of the application lists on its own.
+     *
+     * @var list<class-string<\Primix\Resources\Resource>>
+     */
+    public static array $panelResources = [];
+
     public function getId(): string
     {
         return 'admin';
@@ -34,6 +41,7 @@ class TestPanelProvider extends PanelProvider
 
         return $panel
             ->path('admin')
+            ->resources(static::$panelResources)
             ->plugin($plugin);
     }
 }

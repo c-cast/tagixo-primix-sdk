@@ -24,6 +24,7 @@
         "orchestra/testbench": "^10.0|^11.0",
         "pestphp/pest": "^3.0",
         "pestphp/pest-plugin-laravel": "^3.0",
+        "tagixo/document-builder": "^0.1",
         "tagixo/form-builder": "^0.1",
         "tagixo/mail-builder": "^0.1",
         "tagixo/page-builder": "^0.1"

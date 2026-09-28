@@ -9,6 +9,7 @@ use Tagixo\Primix\Resources\PageResource;
 use Tagixo\Primix\Resources\Pages\EditTagixoRecord;
 use Tagixo\Primix\TagixoPrimixPlugin;
 use Tagixo\Primix\Tests\Support\CustomPageResource;
+use Tagixo\Primix\Tests\Support\HouseResource;
 use Tagixo\Primix\Tests\Support\TestPanelProvider;
 
 /*
@@ -91,4 +92,14 @@ it('shares one set of pages between the types, told apart by the route', functio
         ->and($edit->defaults['_resource'])->toBe(MailResource::class)
         ->and(Route::getRoutes()->getByName('primix.admin.pages.edit')->defaults['_resource'])
         ->toBe(PageResource::class);
+});
+
+it('leaves the resources the panel already had alone', function () {
+    TestPanelProvider::$panelResources = [HouseResource::class];
+    $this->refreshApplication();
+
+    $resources = app(PanelRegistry::class)->get('admin')->getResources();
+
+    expect($resources)->toContain(HouseResource::class)
+        ->and($resources)->toContain(PageResource::class);
 });

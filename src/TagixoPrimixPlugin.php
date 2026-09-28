@@ -60,6 +60,7 @@ class TagixoPrimixPlugin implements Plugin
      */
     protected array $capabilities = [
         Capabilities\FormBuilderCapability::class,
+        Capabilities\MediaGalleryCapability::class,
     ];
 
     /**
@@ -68,6 +69,8 @@ class TagixoPrimixPlugin implements Plugin
     protected array $withoutCapabilities = [];
 
     protected bool $appForms = true;
+
+    protected bool $mediaLibrary = true;
 
     protected ?string $formTarget = null;
 
@@ -101,7 +104,9 @@ class TagixoPrimixPlugin implements Plugin
     {
         Tagixo::disableManagementApi();
 
-        $panel->resources(array_values($this->resolveResources()));
+        // `resources()` replaces the list, and a panel may already have its own
+        // (listed or discovered): keep them.
+        $panel->resources([...$panel->getResources(), ...array_values($this->resolveResources())]);
 
         foreach ($this->resolveCapabilities() as $capability) {
             $capability->apply($panel, $this);
@@ -240,6 +245,22 @@ class TagixoPrimixPlugin implements Plugin
     public function appFormsEnabled(): bool
     {
         return $this->appForms;
+    }
+
+    /**
+     * Whether the panel gets a section for the media library. The picker of the
+     * editor is available to forms either way.
+     */
+    public function withMediaGallery(bool $enabled = true): static
+    {
+        $this->mediaLibrary = $enabled;
+
+        return $this;
+    }
+
+    public function mediaLibraryEnabled(): bool
+    {
+        return $this->mediaLibrary;
     }
 
     /**

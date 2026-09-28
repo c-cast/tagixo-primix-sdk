@@ -68,6 +68,22 @@ $table->columns(PrimixFormColumns::from('contact-us'))        // the columns the
 PrimixFormStyles::scriptFrom('contact-us');                    // the look the editor gave them
 ```
 
+**Media library.** The panel gets a section to browse the library, edit what a
+file says about itself (title, alt text, description, folder) and delete it;
+uploading goes through the core's `MediaService`, so thumbnails, variants and the
+folder rules stay its business. Any Primix form can also use the picker of the
+editor — the same dialog, browsing, upload and external URL included:
+
+```php
+use Tagixo\Primix\Forms\Fields\MediaPickerField;
+
+MediaPickerField::make('cover')->images();
+MediaPickerField::make('gallery')->images()->multiple()->maxFiles(6);
+```
+
+**Document builder.** The listing of the documents offers the printed file, from
+the builder's own download route.
+
 ## Tuning it
 
 ```php
@@ -79,6 +95,7 @@ TagixoPrimixPlugin::make()
     ->resource('pages', MyPageResource::class)    // your own screens for a type
     ->lockFormTarget('app')                       // every form is a panel form
     ->withAppForms(false)                         // or: leave the builder to the universal palette
+    ->withMediaGallery(false)                     // no library section (the picker stays)
     ->withoutCapability('form-builder')           // nothing from that package at all
     ->capability(MyCapability::class);
 ```
