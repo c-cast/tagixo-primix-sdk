@@ -26,3 +26,11 @@ it('leaves the site settings out when the panel says so', function () {
     expect(Route::has('primix.admin.site-settings'))->toBeFalse()
         ->and(Route::has('primix.admin.layouts.index'))->toBeTrue();
 });
+
+it('leaves the menus out when the panel says so', function () {
+    TestPanelProvider::$configure = fn (TagixoPrimixPlugin $plugin) => $plugin->withMenus(false);
+    $this->refreshApplication();
+
+    expect(Route::has('primix.admin.menus.index'))->toBeFalse()
+        ->and(Route::has('primix.admin.layouts.index'))->toBeTrue();
+});

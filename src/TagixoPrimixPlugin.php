@@ -75,6 +75,8 @@ class TagixoPrimixPlugin implements Plugin
 
     protected bool $layouts = true;
 
+    protected bool $menus = true;
+
     protected bool $siteSettings = true;
 
     protected ?string $formTarget = null;
@@ -281,6 +283,21 @@ class TagixoPrimixPlugin implements Plugin
     public function layoutsEnabled(): bool
     {
         return $this->layouts;
+    }
+
+    /**
+     * Whether the panel administers the menus of the site.
+     */
+    public function withMenus(bool $enabled = true): static
+    {
+        $this->menus = $enabled;
+
+        return $this;
+    }
+
+    public function menusEnabled(): bool
+    {
+        return $this->menus;
     }
 
     /**

@@ -64,6 +64,7 @@ return [
         'sliders' => 'pi pi-images',
         'media' => 'pi pi-images',
         'layouts' => 'pi pi-table',
+        'menus' => 'pi pi-bars',
         'site-settings' => 'pi pi-cog',
     ],
 
