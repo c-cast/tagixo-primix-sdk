@@ -1,153 +1,188 @@
 <?php
 
-namespace Ccast\TagixoPrimix;
+namespace Tagixo\Primix;
 
-use Ccast\TagixoPrimix\Pages\ThemeBuilderPage;
-use Ccast\TagixoPrimix\Resources\Forms\FormResource;
-use Ccast\TagixoPrimix\Resources\GlobalBlocks\GlobalBlockResource;
-use Ccast\TagixoPrimix\Resources\LayoutResource;
-use Ccast\TagixoPrimix\Resources\Mails\MailResource;
-use Ccast\TagixoPrimix\Resources\MediaResource;
-use Ccast\TagixoPrimix\Resources\MenuResource;
-use Ccast\TagixoPrimix\Resources\Pages\PageResource;
-use Ccast\TagixoPrimix\Resources\Documents\DocumentResource;
-use Ccast\TagixoPrimix\Resources\Popups\PopupResource;
-use Ccast\TagixoPrimix\Resources\Sliders\SliderResource;
-use Ccast\Tagixo\Contracts\HasPlugin;
-use Ccast\Tagixo\Tagixo;
-use Ccast\TagixoPrimix\Forms\PropTypes\BooleanTablePropType;
-use Ccast\TagixoPrimix\Forms\PropTypes\DateTablePropType;
-use Ccast\TagixoPrimix\Forms\PropTypes\FileTablePropType;
-use Ccast\TagixoPrimix\Forms\PropTypes\PrimixTablePropType;
 use Primix\Contracts\Plugin;
 use Primix\Panel;
+use Tagixo\Core\BuilderTypeRegistry;
+use Tagixo\Core\Tagixo;
+use Tagixo\Primix\Resources\DocumentResource;
+use Tagixo\Primix\Resources\FormResource;
+use Tagixo\Primix\Resources\GlobalBlockResource;
+use Tagixo\Primix\Resources\MailResource;
+use Tagixo\Primix\Resources\PageResource;
+use Tagixo\Primix\Resources\PopupResource;
+use Tagixo\Primix\Resources\SliderResource;
+use Tagixo\Primix\Resources\TagixoRecordResource;
 
+/**
+ * Brings Tagixo into a Primix panel: one admin resource per record type the
+ * installed builders register, and nothing for the ones they don't.
+ *
+ * Which packages are installed is asked of the BuilderTypeRegistry, not of the
+ * autoloader: an application can drop a type from `tagixo.builder_types` or
+ * replace its handler, and the panel has to follow that, not the file system.
+ */
 class TagixoPrimixPlugin implements Plugin
 {
-    private bool $mediaGallery = false;
+    /**
+     * Resource class per builder type key. An application adds its own type, or
+     * replaces one of these, with `->resource('pages', MyPageResource::class)`.
+     *
+     * @var array<string, class-string<TagixoRecordResource>>
+     */
+    protected array $resources = [
+        'pages' => PageResource::class,
+        'popups' => PopupResource::class,
+        'global-blocks' => GlobalBlockResource::class,
+        'forms' => FormResource::class,
+        'mails' => MailResource::class,
+        'documents' => DocumentResource::class,
+        'sliders' => SliderResource::class,
+    ];
 
-    private bool $mailTemplates = false;
+    /**
+     * @var list<string>|null
+     */
+    protected ?array $only = null;
 
-    private bool $documents = false;
+    /**
+     * @var list<string>
+     */
+    protected array $except = [];
 
-    private ?string $formTarget = null;
+    protected ?string $navigationGroup = null;
+
+    /**
+     * @var array<string, string>
+     */
+    protected array $icons = [];
 
     public function getId(): string
     {
         return 'tagixo';
     }
 
-    public function register(Panel $panel): void
-    {
-        // The resource list is config-driven: comment out a line in
-        // config/tagixo-primix.php to hide that builder from the admin panel.
-        // Fall back to the package defaults when the config is unavailable.
-        $resources = array_values(array_filter(
-            (array) config('tagixo-primix.resources', $this->defaultResources()),
-            fn ($resource) => is_string($resource) && class_exists($resource),
-        ));
-
-        // The fluent opt-in flags still add their resource (deduped), so
-        // existing ->withMediaGallery() / ->withMailTemplates() /
-        // ->withPdfTemplates() call sites keep working alongside the config.
-        foreach ([
-            [$this->mediaGallery, MediaResource::class],
-            [$this->mailTemplates, MailResource::class],
-            [$this->documents, DocumentResource::class],
-        ] as [$enabled, $resource]) {
-            if ($enabled && ! in_array($resource, $resources, true)) {
-                $resources[] = $resource;
-            }
-        }
-
-        $panel->resources($resources);
-        $panel->pages([ThemeBuilderPage::class]);
-    }
-
     /**
-     * Default resources used when config/tagixo-primix.php is not loaded.
-     *
-     * @return array<int, class-string>
+     * Resolved from the container so the panel, the resources and the
+     * application all see the same configured plugin.
      */
-    private function defaultResources(): array
-    {
-        return [
-            PageResource::class,
-            LayoutResource::class,
-            MenuResource::class,
-            FormResource::class,
-            SliderResource::class,
-            PopupResource::class,
-            GlobalBlockResource::class,
-        ];
-    }
-
-    public function boot(Panel $panel): void
-    {
-        if ($this->formTarget !== null) {
-            app(Tagixo::class)->lockFormTarget($this->formTarget);
-        }
-
-        app(Tagixo::class)->extendFormModule('*',                           ['table' => PrimixTablePropType::class]);
-        app(Tagixo::class)->extendFormModule(['checkbox'],                  ['table' => BooleanTablePropType::class]);
-        app(Tagixo::class)->extendFormModule(['date', 'date-picker'],       ['table' => DateTablePropType::class]);
-        app(Tagixo::class)->extendFormModule(['file', 'file-upload'],       ['table' => FileTablePropType::class]);
-        app(Tagixo::class)->hideFormModulePropTypes('*', ['sizing']);
-
-        foreach (app(Tagixo::class)->getPlugins() as $plugin) {
-            if (! ($plugin instanceof HasPlugin)) {
-                continue;
-            }
-
-            $sub = $plugin->getPlugin();
-
-            if ($sub instanceof Plugin) {
-                $sub->register($panel);
-                $sub->boot($panel);
-            }
-        }
-    }
-
     public static function make(): static
     {
         return app(static::class);
     }
 
     /**
-     * Lock all forms in this panel to a specific target ('universal' or 'app').
-     * Hides the target selector — the user cannot change it.
+     * Called while the panel provider boots — before the core loads its routes
+     * in an `app()->booted()` callback, which is the last moment the management
+     * API can still be switched off.
      */
-    public function formTarget(string $target): static
+    public function register(Panel $panel): void
     {
-        $this->formTarget = $target;
+        Tagixo::disableManagementApi();
+
+        $panel->resources(array_values($this->resolveResources()));
+    }
+
+    public function boot(Panel $panel): void {}
+
+    /**
+     * The resources this panel gets: a registered type with a resource class,
+     * minus what the panel excluded.
+     *
+     * @return array<string, class-string<TagixoRecordResource>>
+     */
+    public function resolveResources(): array
+    {
+        $registry = app(BuilderTypeRegistry::class);
+        $configured = (array) config('tagixo-primix.resources', []);
+        $resources = [...$this->resources, ...array_filter($configured, 'is_string')];
+
+        $resolved = [];
+
+        foreach ($resources as $type => $resource) {
+            if (! $registry->has($type) || ! $this->wanted($type) || ! class_exists($resource)) {
+                continue;
+            }
+
+            $resolved[$type] = $resource;
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Administer only these types.
+     *
+     * @param  list<string>  $types
+     */
+    public function only(array $types): static
+    {
+        $this->only = $types;
 
         return $this;
     }
 
-    public function withMediaGallery(bool $enabled = true): static
+    /**
+     * Administer every type but these: the records stay, their admin section goes.
+     *
+     * @param  list<string>  $types
+     */
+    public function except(array $types): static
     {
-        $this->mediaGallery = $enabled;
+        $this->except = $types;
 
         return $this;
     }
 
-    public function withMailTemplates(bool $enabled = true): static
+    /**
+     * Use this resource class for that type, in place of (or in addition to) the
+     * ones the SDK ships.
+     *
+     * @param  class-string<TagixoRecordResource>  $resource
+     */
+    public function resource(string $type, string $resource): static
     {
-        $this->mailTemplates = $enabled;
+        $this->resources[$type] = $resource;
 
         return $this;
     }
 
-    public function withDocuments(bool $enabled = true): static
+    public function navigationGroup(?string $group): static
     {
-        $this->documents = $enabled;
+        $this->navigationGroup = $group;
 
         return $this;
     }
 
-    /** @deprecated Use withDocuments() instead. */
-    public function withPdfTemplates(bool $enabled = true): static
+    /**
+     * @param  array<string, string>  $icons  Type key => icon class.
+     */
+    public function icons(array $icons): static
     {
-        return $this->withDocuments($enabled);
+        $this->icons = [...$this->icons, ...$icons];
+
+        return $this;
+    }
+
+    public function iconFor(string $type): ?string
+    {
+        return $this->icons[$type]
+            ?? config("tagixo-primix.icons.{$type}")
+            ?? config('tagixo-primix.icons.default');
+    }
+
+    public function getNavigationGroup(): ?string
+    {
+        return $this->navigationGroup ?? config('tagixo-primix.navigation_group');
+    }
+
+    protected function wanted(string $type): bool
+    {
+        if (in_array($type, $this->except, true)) {
+            return false;
+        }
+
+        return $this->only === null || in_array($type, $this->only, true);
     }
 }

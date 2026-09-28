@@ -1,5 +1,5 @@
 <?php
 
-use Ccast\TagixoPrimix\Tests\TestCase;
+use Tagixo\Primix\Tests\TestCase;
 
-uses(TestCase::class)->in(__DIR__);
+uses(TestCase::class)->in('Feature', 'Unit');

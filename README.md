@@ -1,43 +1,95 @@
-# tagixo-primix
+# tagixo/primix
 
-Primix SDK for the Tagixo Visual Builder.
-
-This package wires Tagixo into the [Primix](https://github.com/livue-laravel/primix) admin panel: page, layout, menu and media resources, the media-gallery LiveWire component, and the supporting view layouts.
+Primix SDK for [Tagixo](https://github.com/c-cast). One package for every
+builder: each record type the installed builders register becomes an admin
+resource, and the builders you did not buy leave no trace in the panel.
 
 ## Installation
 
 ```bash
-composer require ccast/tagixo-primix
+composer require tagixo/primix
 ```
 
-Requires:
-
-- PHP ^8.2
-- `ccast/tagixo`
-- `primix/primix`
-- `symfony/expression-language`
-
-The package auto-registers `Ccast\TagixoPrimix\TagixoPrimixServiceProvider`.
-
-## Usage
-
-Enable the plugin in your `AdminPanelProvider`:
+Enable the plugin in your panel provider:
 
 ```php
-use Ccast\TagixoPrimix\TagixoPrimixPlugin;
+use Tagixo\Primix\TagixoPrimixPlugin;
 
-$panel->plugin(
-    TagixoPrimixPlugin::make()->withMediaGallery(),
-);
+public function panel(Panel $panel): Panel
+{
+    return $panel
+        ->path('admin')
+        ->plugin(TagixoPrimixPlugin::make());
+}
 ```
 
-## Pages resource
+That is the whole setup. Registering the plugin also turns the core's own record
+CRUD off (`Tagixo::disableManagementApi()`): the panel manages records now. What
+the editor needs — `/tagixo/builder/*`, including the mount page, the record
+payload and the save — stays on, and the resources link to it.
 
-The Pages resource lists both user-managed pages and the source-synced model template pages (no global `userManaged()` scope). A **Type** filter (`Pages` / `Model templates`) in the pages table separates the two kinds.
+## What you get
 
-## Theme Builder
+One resource per registered record type: pages, popups, global blocks, forms,
+mails, documents, sliders — whichever of them are installed. Each one lists,
+creates, edits the metadata of and deletes its records, opens the builder, and
+offers a preview when the type issues preview URLs.
 
-Behaviour is at parity with the Filament SDK (`getBuildUrl` / `isBodyConfigured` / `resolveModelPageTarget`): opening the Body of a model-scoped template lazily creates the underlying special page (`model_archive` → archive; `model_all` / `taxonomy` / `record` → single, via `Tagixo::ensureRoutePagesForModel()`) and opens its builder directly; the "configured" state reflects the actual page content.
+Nothing in here describes a page or a mail: the resource asks the type
+(`Tagixo\Core\Contracts\BuilderTypeContract`) for its model, its listing query,
+its fields and its rules. A builder released tomorrow is administered the day it
+is installed.
+
+## Tuning it
+
+```php
+TagixoPrimixPlugin::make()
+    ->navigationGroup('Content')          // one group for every Tagixo resource
+    ->except(['global-blocks'])            // manage those only from inside the builder
+    ->only(['pages', 'forms'])             // or the other way round
+    ->icons(['pages' => 'pi pi-file'])
+    ->resource('pages', MyPageResource::class);   // your own screens for a type
+```
+
+`config/tagixo-primix.php` (publish it with
+`php artisan vendor:publish --tag=tagixo-primix-config`) holds the same
+defaults, plus the resource class of a record type of your own:
+
+```php
+'resources' => [
+    'recipes' => App\Primix\Resources\RecipeResource::class,
+],
+```
+
+A resource of your own extends `Tagixo\Primix\Resources\TagixoRecordResource`
+and names its type; override `table()`, `form()` or the labels to go further.
+
+```php
+class RecipeResource extends TagixoRecordResource
+{
+    protected static string $tagixoType = 'recipes';
+}
+```
+
+## Requirements
+
+- PHP 8.2+
+- `primix/primix` ^0.7.17
+- `tagixo/core` ^0.1, plus at least one builder
+
+The editor routes of the core use `config('tagixo.route_middleware')`
+(`['web', 'auth']` by default). A panel behind another guard should set that
+config accordingly, so the same people who reach the panel reach the builder.
+
+## Development
+
+The package is developed against the Tagixo monorepo next to it: the `path`
+repository in `composer.json` points at `../../Projects/tagixo/packages/*`.
+Tests boot a Primix panel with the core, the page builder and the mail builder:
+
+```bash
+composer test
+```
 
 ## License
 

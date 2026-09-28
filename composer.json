@@ -1,6 +1,6 @@
 {
-    "name": "ccast/tagixo-primix",
-    "description": "Primix SDK for Tagixo Visual Builder",
+    "name": "tagixo/primix",
+    "description": "Primix SDK for Tagixo: every installed builder becomes an admin resource",
     "type": "library",
     "keywords": [
         "laravel",
@@ -11,38 +11,56 @@
     "license": "MIT",
     "authors": [
         {
-            "name": "Mikrowl Team",
-            "email": "dev@mikrowl.com"
+            "name": "Claudio Castorina"
         }
     ],
     "require": {
         "php": "^8.2",
-        "ccast/tagixo": "^1.0.20",
-        "primix/primix": "^0.7.6",
-        "symfony/expression-language": "^6.4|^7.0"
+        "primix/primix": "^0.7.17",
+        "tagixo/core": "^0.1"
     },
     "require-dev": {
+        "laravel/pint": "^1.18",
         "orchestra/testbench": "^10.0|^11.0",
         "pestphp/pest": "^3.0",
-        "pestphp/pest-plugin-laravel": "^3.0"
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "tagixo/mail-builder": "^0.1",
+        "tagixo/page-builder": "^0.1"
+    },
+    "repositories": {
+        "tagixo": {
+            "type": "path",
+            "url": "../../Projects/tagixo/packages/*",
+            "options": {
+                "symlink": true,
+                "versions": {
+                    "tagixo/core": "0.1.x-dev",
+                    "tagixo/document-builder": "0.1.x-dev",
+                    "tagixo/form-builder": "0.1.x-dev",
+                    "tagixo/mail-builder": "0.1.x-dev",
+                    "tagixo/page-builder": "0.1.x-dev",
+                    "tagixo/slider-builder": "0.1.x-dev"
+                }
+            }
+        }
     },
     "autoload": {
         "psr-4": {
-            "Ccast\\TagixoPrimix\\": "src/"
+            "Tagixo\\Primix\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Ccast\\TagixoPrimix\\Tests\\": "tests/"
+            "Tagixo\\Primix\\Tests\\": "tests/"
         }
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "1.x-dev"
+            "dev-main": "0.1.x-dev"
         },
         "laravel": {
             "providers": [
-                "Ccast\\TagixoPrimix\\TagixoPrimixServiceProvider"
+                "Tagixo\\Primix\\TagixoPrimixServiceProvider"
             ]
         }
     },
@@ -55,6 +73,7 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/pest"
+        "test": "vendor/bin/pest",
+        "format": "vendor/bin/pint"
     }
 }

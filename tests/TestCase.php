@@ -1,64 +1,51 @@
 <?php
 
-namespace Ccast\TagixoPrimix\Tests;
+namespace Tagixo\Primix\Tests;
 
-use Ccast\Tagixo\TagixoServiceProvider;
-use Ccast\TagixoPrimix\TagixoPrimixServiceProvider;
-use Ccast\TagixoPrimix\Tests\Support\AdminPanelProvider;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
+use BladeUI\Icons\BladeIconsServiceProvider;
 use LiVue\LiVueServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Primix\Actions\PrimixActionsServiceProvider;
 use Primix\Details\PrimixDetailsServiceProvider;
 use Primix\Forms\PrimixFormsServiceProvider;
-use Primix\MultiTenant\MultiTenantServiceProvider;
 use Primix\Notifications\PrimixNotificationsServiceProvider;
 use Primix\PrimixServiceProvider;
 use Primix\Support\PrimixSupportServiceProvider;
 use Primix\Tables\PrimixTablesServiceProvider;
 use Primix\Widgets\PrimixWidgetsServiceProvider;
+use Tagixo\Core\TagixoServiceProvider;
+use Tagixo\MailBuilder\MailBuilderServiceProvider;
+use Tagixo\PageBuilder\PageBuilderServiceProvider;
+use Tagixo\Primix\TagixoPrimixServiceProvider;
+use Tagixo\Primix\Tests\Support\TestPanelProvider;
 
+/**
+ * Core + page builder + mail builder + the SDK, in a panel that registers the
+ * plugin. Two builders only, on purpose: the tests have to show that the panel
+ * offers the types of the packages installed and not a line more.
+ */
 abstract class TestCase extends Orchestra
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Bare users table — Primix's auth guard needs a user retrievable by id;
-        // the schema is intentionally minimal because the migrated tests only
-        // need a session-authenticated principal, not user-management features.
-        if (! Schema::hasTable('users')) {
-            Schema::create('users', function (Blueprint $table): void {
-                $table->id();
-                $table->string('name')->nullable();
-                $table->string('email')->unique();
-                $table->timestamp('email_verified_at')->nullable();
-                $table->string('password')->nullable();
-                $table->rememberToken();
-                $table->timestamps();
-            });
-        }
-
-        $this->loadMigrationsFrom(__DIR__.'/../vendor/ccast/tagixo/database/migrations');
-    }
-
     protected function getPackageProviders($app): array
     {
         return [
+            BladeIconsServiceProvider::class,
+            BladeHeroiconsServiceProvider::class,
             LiVueServiceProvider::class,
             PrimixSupportServiceProvider::class,
             PrimixActionsServiceProvider::class,
             PrimixFormsServiceProvider::class,
             PrimixTablesServiceProvider::class,
-            PrimixDetailsServiceProvider::class,
             PrimixNotificationsServiceProvider::class,
+            PrimixDetailsServiceProvider::class,
             PrimixWidgetsServiceProvider::class,
-            MultiTenantServiceProvider::class,
             PrimixServiceProvider::class,
             TagixoServiceProvider::class,
+            PageBuilderServiceProvider::class,
+            MailBuilderServiceProvider::class,
             TagixoPrimixServiceProvider::class,
-            AdminPanelProvider::class,
+            TestPanelProvider::class,
         ];
     }
 
@@ -71,6 +58,21 @@ abstract class TestCase extends Orchestra
             'database' => ':memory:',
             'prefix' => '',
         ]);
-        $app['config']->set('auth.providers.users.model', Support\User::class);
+    }
+
+    /**
+     * The users table of Laravel too: the panel screens are behind its auth.
+     * After the refresh, or RefreshDatabase would wipe it again.
+     */
+    protected function defineDatabaseMigrationsAfterDatabaseRefreshed(): void
+    {
+        $this->loadLaravelMigrations();
+    }
+
+    protected function tearDown(): void
+    {
+        TestPanelProvider::$configure = null;
+
+        parent::tearDown();
     }
 }
