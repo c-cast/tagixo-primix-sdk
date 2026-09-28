@@ -63,6 +63,8 @@ return [
         'documents' => 'pi pi-file-pdf',
         'sliders' => 'pi pi-images',
         'media' => 'pi pi-images',
+        'layouts' => 'pi pi-table',
+        'site-settings' => 'pi pi-cog',
     ],
 
 ];

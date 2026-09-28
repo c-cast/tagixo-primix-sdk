@@ -61,6 +61,7 @@ class TagixoPrimixPlugin implements Plugin
     protected array $capabilities = [
         Capabilities\FormBuilderCapability::class,
         Capabilities\MediaGalleryCapability::class,
+        Capabilities\PageBuilderCapability::class,
     ];
 
     /**
@@ -71,6 +72,10 @@ class TagixoPrimixPlugin implements Plugin
     protected bool $appForms = true;
 
     protected bool $mediaLibrary = true;
+
+    protected bool $layouts = true;
+
+    protected bool $siteSettings = true;
 
     protected ?string $formTarget = null;
 
@@ -261,6 +266,36 @@ class TagixoPrimixPlugin implements Plugin
     public function mediaLibraryEnabled(): bool
     {
         return $this->mediaLibrary;
+    }
+
+    /**
+     * Whether the panel administers the layouts a page wears.
+     */
+    public function withLayouts(bool $enabled = true): static
+    {
+        $this->layouts = $enabled;
+
+        return $this;
+    }
+
+    public function layoutsEnabled(): bool
+    {
+        return $this->layouts;
+    }
+
+    /**
+     * Whether the panel carries the settings of the public site.
+     */
+    public function withSiteSettings(bool $enabled = true): static
+    {
+        $this->siteSettings = $enabled;
+
+        return $this;
+    }
+
+    public function siteSettingsEnabled(): bool
+    {
+        return $this->siteSettings;
     }
 
     /**

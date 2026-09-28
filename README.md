@@ -84,6 +84,12 @@ MediaPickerField::make('gallery')->images()->multiple()->maxFiles(6);
 **Document builder.** The listing of the documents offers the printed file, from
 the builder's own download route.
 
+**Page builder.** Two screens that are not record types: the **layouts** a page
+wears — administered by what they apply to, since their content is edited from a
+page's header and footer — and the **site settings** the public site reads (name,
+default title and description, favicon, custom CSS). Turn either off with
+`withLayouts(false)` / `withSiteSettings(false)`.
+
 ## Tuning it
 
 ```php
@@ -96,6 +102,8 @@ TagixoPrimixPlugin::make()
     ->lockFormTarget('app')                       // every form is a panel form
     ->withAppForms(false)                         // or: leave the builder to the universal palette
     ->withMediaGallery(false)                     // no library section (the picker stays)
+    ->withLayouts(false)                          // no layouts section
+    ->withSiteSettings(false)                     // no site settings screen
     ->withoutCapability('form-builder')           // nothing from that package at all
     ->capability(MyCapability::class);
 ```
