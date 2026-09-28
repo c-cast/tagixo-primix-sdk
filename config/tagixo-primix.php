@@ -23,6 +23,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Capabilities
+    |--------------------------------------------------------------------------
+    |
+    | What the panel gains from a package beyond its record types: the form
+    | builder brings the `app` form target, the table tab of each field and the
+    | preview of an app form. Each capability checks whether its package is
+    | installed, so listing one costs nothing when it is not.
+    |
+    | Add your own here, or with `TagixoPrimixPlugin::make()->capability(...)`;
+    | drop one with `->withoutCapability('form-builder')`.
+    |
+    */
+
+    'capabilities' => [
+        // App\Primix\Capabilities\MyCapability::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Navigation
     |--------------------------------------------------------------------------
     |

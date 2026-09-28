@@ -6,6 +6,7 @@ use Primix\Contracts\Plugin;
 use Primix\Panel;
 use Tagixo\Core\BuilderTypeRegistry;
 use Tagixo\Core\Tagixo;
+use Tagixo\Primix\Capabilities\Capability;
 use Tagixo\Primix\Resources\DocumentResource;
 use Tagixo\Primix\Resources\FormResource;
 use Tagixo\Primix\Resources\GlobalBlockResource;
@@ -51,6 +52,25 @@ class TagixoPrimixPlugin implements Plugin
      */
     protected array $except = [];
 
+    /**
+     * Capabilities of the packages that are not record types. Each one decides
+     * whether it applies; a panel drops one with `withoutCapability('form-builder')`.
+     *
+     * @var list<class-string<Capability>>
+     */
+    protected array $capabilities = [
+        Capabilities\FormBuilderCapability::class,
+    ];
+
+    /**
+     * @var list<string>
+     */
+    protected array $withoutCapabilities = [];
+
+    protected bool $appForms = true;
+
+    protected ?string $formTarget = null;
+
     protected ?string $navigationGroup = null;
 
     /**
@@ -82,9 +102,44 @@ class TagixoPrimixPlugin implements Plugin
         Tagixo::disableManagementApi();
 
         $panel->resources(array_values($this->resolveResources()));
+
+        foreach ($this->resolveCapabilities() as $capability) {
+            $capability->apply($panel, $this);
+        }
     }
 
     public function boot(Panel $panel): void {}
+
+    /**
+     * The capabilities this panel gets: declared, not excluded, and available —
+     * which each one answers for itself, asking the container.
+     *
+     * @return list<Capability>
+     */
+    public function resolveCapabilities(): array
+    {
+        $configured = (array) config('tagixo-primix.capabilities', []);
+        $classes = array_values(array_unique([...$this->capabilities, ...array_filter($configured, 'is_string')]));
+
+        $resolved = [];
+
+        foreach ($classes as $class) {
+            if (! class_exists($class)) {
+                continue;
+            }
+
+            /** @var Capability $capability */
+            $capability = app($class);
+
+            if (in_array($capability->id(), $this->withoutCapabilities, true) || ! $capability->available()) {
+                continue;
+            }
+
+            $resolved[] = $capability;
+        }
+
+        return $resolved;
+    }
 
     /**
      * The resources this panel gets: a registered type with a resource class,
@@ -146,6 +201,61 @@ class TagixoPrimixPlugin implements Plugin
         $this->resources[$type] = $resource;
 
         return $this;
+    }
+
+    /**
+     * Leave a capability out, by id ('form-builder'), keeping the rest.
+     */
+    public function withoutCapability(string ...$ids): static
+    {
+        $this->withoutCapabilities = [...$this->withoutCapabilities, ...$ids];
+
+        return $this;
+    }
+
+    /**
+     * Add a capability of your own (or of another package).
+     *
+     * @param  class-string<Capability>  $capability
+     */
+    public function capability(string $capability): static
+    {
+        $this->capabilities[] = $capability;
+
+        return $this;
+    }
+
+    /**
+     * Whether the builder offers the `app` form target in this installation: the
+     * interactive layouts (tabs, wizard, groups) a panel can render and a public
+     * page cannot. On by default, since that is why this SDK exists.
+     */
+    public function withAppForms(bool $enabled = true): static
+    {
+        $this->appForms = $enabled;
+
+        return $this;
+    }
+
+    public function appFormsEnabled(): bool
+    {
+        return $this->appForms;
+    }
+
+    /**
+     * Lock every form of this installation to one target ('universal' or 'app'),
+     * hiding the choice from the editor.
+     */
+    public function lockFormTarget(string $target): static
+    {
+        $this->formTarget = $target;
+
+        return $this;
+    }
+
+    public function lockedFormTarget(): ?string
+    {
+        return $this->formTarget;
     }
 
     public function navigationGroup(?string $group): static

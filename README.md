@@ -40,6 +40,34 @@ Nothing in here describes a page or a mail: the resource asks the type
 its fields and its rules. A builder released tomorrow is administered the day it
 is installed.
 
+## What each builder adds
+
+Beyond its records, a builder can bring the panel features of its own. They are
+capabilities: each one checks whether its package is there, so nothing has to be
+configured and nothing breaks when a builder is not installed.
+
+**Form builder.** The panel is where the interactive layouts of a form — tabs,
+wizard, groups — are native, so the `app` form target is enabled: the editor
+offers them, and its Preview of an app form opens the panel's own page, which
+renders it as a real Primix form. Every field also gains a **Table** tab, where
+it says how its answers look in a listing.
+
+Use a form the editor drew anywhere in the panel:
+
+```php
+use Tagixo\Primix\Forms\PrimixFormColumns;
+use Tagixo\Primix\Forms\PrimixFormFields;
+use Tagixo\Primix\Forms\PrimixFormFilters;
+use Tagixo\Primix\Forms\PrimixFormStyles;
+
+$form->schema(PrimixFormFields::from('contact-us'));          // its fields, as Primix ones
+
+$table->columns(PrimixFormColumns::from('contact-us'))        // the columns the fields asked for
+      ->filters(PrimixFormFilters::from('contact-us'));       // and the filters they allow
+
+PrimixFormStyles::scriptFrom('contact-us');                    // the look the editor gave them
+```
+
 ## Tuning it
 
 ```php
@@ -48,7 +76,11 @@ TagixoPrimixPlugin::make()
     ->except(['global-blocks'])            // manage those only from inside the builder
     ->only(['pages', 'forms'])             // or the other way round
     ->icons(['pages' => 'pi pi-file'])
-    ->resource('pages', MyPageResource::class);   // your own screens for a type
+    ->resource('pages', MyPageResource::class)    // your own screens for a type
+    ->lockFormTarget('app')                       // every form is a panel form
+    ->withAppForms(false)                         // or: leave the builder to the universal palette
+    ->withoutCapability('form-builder')           // nothing from that package at all
+    ->capability(MyCapability::class);
 ```
 
 `config/tagixo-primix.php` (publish it with

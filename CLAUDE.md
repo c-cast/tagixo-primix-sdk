@@ -28,6 +28,10 @@ builder packages); the legacy SDK for the single `ccast/tagixo` plugin is the
 | `Resources\TagixoRecordResource` | The generic resource: model, slug, labels, icon, listing query, table, form, pages, builder and preview actions, plus record writing through the type. |
 | `Resources\{Page,Popup,GlobalBlock,Form,Mail,Document,Slider}Resource` | Six lines each: Primix keys resources by class, so every type needs one. They name their type and nothing else. |
 | `Resources\Pages\{CreateTagixoRecord,EditTagixoRecord}` | Shared by every resource (`Primix\Resources\Pages\Page::getResource()` falls back to the route's `_resource`). Creation and saving are handed to the type; the listing uses Primix's own `ListRecords`. |
+| `Capabilities\Capability` + `TagixoPrimixPlugin::resolveCapabilities()` | What a package adds beyond its record types. `available()` asks the container (`app()->bound(...)`), never the autoloader, so a package that is present but not booted turns nothing on. A panel drops one with `withoutCapability('form-builder')` and adds its own with `capability(...)`. |
+| `Capabilities\FormBuilderCapability` | Enables the `app` form target (or locks it), gives every form module the `table` tab (`PrimixTablePropType`, plus the boolean, date and file variants), hides `sizing`, and points the builder's app-form Preview at `FormResource`'s own page. |
+| `Forms\PrimixForm{Fields,Columns,Filters,Styles}` + `Support\FormSchemaToPrimix` | A form drawn in the builder, used in the panel: fields as Primix components, columns and filters from each field's Table tab, and the element styles as CSS scoped to `data-tgx-field`. The converter maps the builder's own ids — the layout modules carry a `form-` prefix (`form-grid`, `form-tabs`, `form-tab`, …) — and drops the submit button, which a panel form provides itself. |
+| `Resources\Pages\PreviewAppForm` | That form as a real Primix form, tabs and wizard native. |
 | `Support\RecordFieldSchema` | `RecordField[]` → Primix columns and inputs. Status becomes a badge with the option's colour; a field the type marks `formOnly` never becomes a column; what `storeRules()` does not accept is hidden on the create screen. |
 
 The builder itself is the core's page: the Build action links to
@@ -36,6 +40,14 @@ Clicking a row in a listing opens it too.
 
 ## Tests
 
-`composer test` (Pest + Testbench): a panel with the core, the page builder and
-the mail builder — two builders on purpose, so the tests show the panel offering
-what is installed and nothing more.
+`composer test` (Pest + Testbench). Two installations, because that is the whole
+point of the SDK:
+
+- `tests/Feature`, `tests/Unit` — core + page builder + mail builder. Two
+  builders on purpose: the panel must offer what is installed and nothing more,
+  and a capability of an absent package must leave no trace.
+- `tests/WithFormBuilder` — the same plus the form builder, booted with it from
+  the start so its migrations run (`WithFormBuilderTestCase`). Adding a provider
+  through `TestCase::$extraProviders` + `refreshApplication()` works for anything
+  that does not touch the database — the in-memory sqlite does not survive a
+  refresh.

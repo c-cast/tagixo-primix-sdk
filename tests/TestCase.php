@@ -4,6 +4,7 @@ namespace Tagixo\Primix\Tests;
 
 use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
 use BladeUI\Icons\BladeIconsServiceProvider;
+use Illuminate\Support\ServiceProvider;
 use LiVue\LiVueServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Primix\Actions\PrimixActionsServiceProvider;
@@ -23,10 +24,19 @@ use Tagixo\Primix\Tests\Support\TestPanelProvider;
 /**
  * Core + page builder + mail builder + the SDK, in a panel that registers the
  * plugin. Two builders only, on purpose: the tests have to show that the panel
- * offers the types of the packages installed and not a line more.
+ * offers the types of the packages installed and not a line more. A test that
+ * needs another one adds its provider through `static::$extraProviders`.
  */
 abstract class TestCase extends Orchestra
 {
+    /**
+     * Providers a test adds to the installation, to show what the panel does with
+     * a package present or absent.
+     *
+     * @var list<class-string<ServiceProvider>>
+     */
+    public static array $extraProviders = [];
+
     protected function getPackageProviders($app): array
     {
         return [
@@ -44,6 +54,7 @@ abstract class TestCase extends Orchestra
             TagixoServiceProvider::class,
             PageBuilderServiceProvider::class,
             MailBuilderServiceProvider::class,
+            ...static::$extraProviders,
             TagixoPrimixServiceProvider::class,
             TestPanelProvider::class,
         ];
@@ -72,6 +83,7 @@ abstract class TestCase extends Orchestra
     protected function tearDown(): void
     {
         TestPanelProvider::$configure = null;
+        static::$extraProviders = [];
 
         parent::tearDown();
     }

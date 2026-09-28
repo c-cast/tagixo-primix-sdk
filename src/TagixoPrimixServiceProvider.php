@@ -17,6 +17,8 @@ class TagixoPrimixServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'tagixo-primix');
+
         $this->publishes([
             __DIR__.'/../config/tagixo-primix.php' => config_path('tagixo-primix.php'),
         ], 'tagixo-primix-config');
