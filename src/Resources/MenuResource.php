@@ -114,7 +114,7 @@ class MenuResource extends Resource
             ->dehydrated(false)
             ->hiddenOn('create')
             ->addActionLabel(__('Add an item'))
-            ->itemLabel(static fn (array $state): ?string => $state['label'] ?? null)
+            ->itemLabel(__('Item'))
             ->collapsible()
             ->schema([
                 ...static::itemFields(),
@@ -127,7 +127,7 @@ class MenuResource extends Resource
                 Repeater::make('children')
                     ->label(__('Sub-items'))
                     ->addActionLabel(__('Add a sub-item'))
-                    ->itemLabel(static fn (array $state): ?string => $state['label'] ?? null)
+                    ->itemLabel(__('Sub-item'))
                     ->collapsible()
                     ->schema(static::itemFields()),
             ]);

@@ -7,3 +7,8 @@
 /composer.lock
 .phpunit.result.cache
 .phpunit.cache/
+
+/node_modules
+/tests/e2e/.state
+/tests/e2e/.report
+/tests/e2e/.results

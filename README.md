@@ -158,6 +158,21 @@ Tests boot a Primix panel with the core, the page builder and the mail builder:
 composer test
 ```
 
+The browser suite drives a real panel — `../../Projects/tagixo-primix-sandbox`,
+a Laravel app with Primix, the core, every builder and this package:
+
+```bash
+npm install
+npm run test:e2e
+```
+
+It boots that app with `APP_ENV=e2e` (so its own database is untouched), seeds
+the records the specs drive and checks what no PHP test can: that the navigation
+shows the builders installed, that a row opens the editor of the core and comes
+back, that a metadata form saves through the type and refuses a slug already
+taken, that a template's header opens the layout itself, and that a menu tree
+survives a reload.
+
 ## License
 
 MIT

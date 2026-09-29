@@ -45,8 +45,20 @@ Clicking a row in a listing opens it too.
 
 ## Tests
 
-`composer test` (Pest + Testbench). Two installations, because that is the whole
-point of the SDK:
+`composer test` (Pest + Testbench), and `npm run test:e2e` (Playwright) against
+`../../Projects/tagixo-primix-sandbox` — a real Laravel app with Primix, the
+core, every builder and this package, booted with `APP_ENV=e2e`.
+
+Traps the browser suite taught, worth keeping:
+- `fill()` is not enough for a Primix field: LiVue syncs through its own watcher,
+  so the panel saves the state it still holds. `tests/e2e/helpers/panel.js`
+  types with real keystrokes and blurs (`typeInto`).
+- Primix animates its SPA navigation with the View Transition API, which rejects
+  whenever a transition interrupts the previous one. Those page errors are the
+  panel's own noise and are allowed in the console guard.
+- The editor's back button is an `<a title="Exit">` with no text.
+
+Three installations, because that is the whole point of the SDK:
 
 - `tests/Feature`, `tests/Unit` — core + page builder + mail builder. Two
   builders on purpose: the panel must offer what is installed and nothing more,
@@ -57,3 +69,8 @@ point of the SDK:
   + `refreshApplication()` works for anything that does not touch the database —
   the in-memory sqlite does not survive a refresh, so a test that reconfigures the
   plugin and needs rows cannot have both.
+- `tests/AppFirst` — the panel provider booted BEFORE the Tagixo packages, which
+  is the order of a real application. The plugin therefore decides its resources
+  in `boot(Panel)`: at `register()` the BuilderTypeRegistry can still be empty,
+  and the panel would show the capabilities' screens and not a single builder.
+  The sandbox found that; this TestCase keeps it found.

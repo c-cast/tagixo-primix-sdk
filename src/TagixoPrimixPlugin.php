@@ -105,14 +105,25 @@ class TagixoPrimixPlugin implements Plugin
     }
 
     /**
-     * Called while the panel provider boots — before the core loads its routes
-     * in an `app()->booted()` callback, which is the last moment the management
-     * API can still be switched off.
+     * Called while the panel provider boots — before the core loads its routes in
+     * an `app()->booted()` callback, which is the last moment the management API
+     * can still be switched off.
      */
     public function register(Panel $panel): void
     {
         Tagixo::disableManagementApi();
+    }
 
+    /**
+     * The resources and the capabilities are decided here, not in register():
+     * the providers of an application boot BEFORE the ones of its packages, so at
+     * registration time the BuilderTypeRegistry can still be empty and the panel
+     * would get no builder at all. `bootPlugins()` runs inside the panel's own
+     * `booted()` callback, before it registers its routes, so a resource added
+     * now is still routed.
+     */
+    public function boot(Panel $panel): void
+    {
         // `resources()` replaces the list, and a panel may already have its own
         // (listed or discovered): keep them.
         $panel->resources([...$panel->getResources(), ...array_values($this->resolveResources())]);
@@ -121,8 +132,6 @@ class TagixoPrimixPlugin implements Plugin
             $capability->apply($panel, $this);
         }
     }
-
-    public function boot(Panel $panel): void {}
 
     /**
      * The capabilities this panel gets: declared, not excluded, and available —
