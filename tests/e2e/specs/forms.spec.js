@@ -14,20 +14,27 @@ test('an app form is previewed as a Primix form, not as HTML of its own', async 
     await expect(page.locator('[data-tgx-field="email"]')).toBeVisible()
 })
 
-test('the fields of an app form carry the Table declaration into the editor payload', async ({ page, seed }) => {
+test('a field of an app form gains the Table tab the SDK injected', async ({ page, seed }) => {
+    // The capability injects the group, and the form's own target (`app`) lets it
+    // through — the payload says so…
     const response = await page.request.get(`/tagixo/form-builder/config?form_id=${seed.form.id}`)
-    expect(response.ok()).toBeTruthy()
-
     const config = await response.json()
-    // The payload keys its components by type.
-    const field = config.availableComponents['text-input']
 
-    // The capability injected it, and the form's own target (`app`) lets it through.
-    expect(Object.keys(field.propTypes)).toContain('table')
-    expect(field.propTypes.table.schema.tab).toBe('table')
+    expect(Object.keys(config.availableComponents['text-input'].propTypes)).toContain('table')
     expect(config.formTargets).toContain('app')
 
-    // NOTE: the properties drawer of the form builder does not render a tab for a
-    // prop type an SDK injects under a tab of its own — the declaration arrives,
-    // the tab does not. Asserting the payload is asserting what is true today.
+    // …and the drawer shows it, next to the standard tabs.
+    await page.goto(`/tagixo/builder/embed?type=forms&id=${seed.form.id}`)
+
+    const canvas = page.frameLocator('.vb-builder-canvas-iframe')
+    await expect(canvas.locator('[data-component-id="e2e-field-email"]').first()).toBeVisible({ timeout: 20_000 })
+    await page.waitForLoadState('networkidle')
+
+    await canvas.locator('[data-component-id="e2e-field-email"]').first().dispatchEvent('click')
+
+    const table = page.getByRole('tab', { name: 'Table', exact: true })
+    await expect(table).toBeVisible()
+
+    await table.click()
+    await expect(page.getByText('Show as column').first()).toBeVisible()
 })

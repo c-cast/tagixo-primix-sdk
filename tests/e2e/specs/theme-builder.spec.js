@@ -15,6 +15,11 @@ test('a template shows its three zones, and the header opens the layout', async 
 
     const zones = page.locator('.tgx-theme-zone')
     await expect(zones).toHaveCount(3)
+
+    // The rules of this screen are registered as an inline asset on the LiVue
+    // app: a <style> inside the component does not survive the morphing, and
+    // without them the three zones are a plain list.
+    await expect(page.locator('.tgx-theme-zones')).toHaveCSS('display', 'grid')
     await expect(zones.nth(0)).toContainText('Header')
     // The header was seeded, the footer was not.
     await expect(zones.nth(0)).toContainText('Built')

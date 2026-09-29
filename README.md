@@ -49,8 +49,8 @@ configured and nothing breaks when a builder is not installed.
 **Form builder.** The panel is where the interactive layouts of a form — tabs,
 wizard, groups — are native, so the `app` form target is enabled: the editor
 offers them, and its Preview of an app form opens the panel's own page, which
-renders it as a real Primix form. Every field also gains a **Table** tab, where
-it says how its answers look in a listing.
+renders it as a real Primix form. Every field also gains a **Table** tab in the
+editor, where it says how its answers look in a listing.
 
 Use a form the editor drew anywhere in the panel:
 
