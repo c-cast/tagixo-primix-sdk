@@ -66,6 +66,7 @@ return [
         'layouts' => 'pi pi-table',
         'menus' => 'pi pi-bars',
         'site-settings' => 'pi pi-cog',
+        'theme-builder' => 'pi pi-objects-column',
     ],
 
 ];

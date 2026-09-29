@@ -2,107 +2,91 @@
 
 namespace Tagixo\Primix\Resources;
 
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Primix\Actions\Action;
 use Primix\Forms\Components\Fields\Repeater;
 use Primix\Forms\Components\Fields\Select;
-use Primix\Forms\Components\Fields\TextInput;
-use Primix\Forms\Components\Fields\Toggle;
 use Primix\Forms\Components\Utilities\Get;
 use Primix\Forms\Form;
-use Primix\Resources\Actions\CreateAction;
-use Primix\Resources\Actions\DeleteAction;
-use Primix\Resources\Actions\DeleteBulkAction;
-use Primix\Resources\Actions\EditAction;
-use Primix\Resources\Pages\CreateRecord;
-use Primix\Resources\Pages\EditRecord;
-use Primix\Resources\Pages\ListRecords;
-use Primix\Resources\Resource;
-use Primix\Tables\Columns\IconColumn;
 use Primix\Tables\Columns\TextColumn;
 use Primix\Tables\Table;
 use Tagixo\Core\Facades\Tagixo;
-use Tagixo\PageBuilder\Models\Layout;
 use Tagixo\PageBuilder\Models\Page;
 use Tagixo\PageBuilder\Services\LayoutConditionService;
+use Tagixo\PageBuilder\Services\LayoutSections;
 
 /**
- * Layouts of the page builder: the header and footer a page wears. They are not a
- * builder type, because their content is edited from a page — the section toggler
- * of the editor saves the header and the footer of whichever layout matched. What
- * is administered here is which pages a layout applies to.
+ * Layouts of the page builder — the header and footer pages wear — which the
+ * `layouts` builder type makes a record like any other. What this resource adds
+ * is the thing only a layout has: the conditions that decide which pages wear it,
+ * and one Build action per section, because a layout holds two documents.
  *
  * A layout matches by conditions, scored by `LayoutResolver`; the one marked
- * global is the fallback for everything that matches nothing.
+ * global is the fallback for everything that matches nothing. Its body is not
+ * here: pages own their body, and a template scoped to a model stands for that
+ * model's archive or single page (the Theme Builder shows all three).
  */
-class LayoutResource extends Resource
+class LayoutResource extends TagixoRecordResource
 {
-    protected static ?string $navigationIcon = null;
-
-    protected static ?string $recordTitleAttribute = 'name';
-
-    public static function getModel(): string
-    {
-        return config('tagixo-page-builder.models.layout', Layout::class);
-    }
-
-    public static function getSlug(): string
-    {
-        return 'layouts';
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return __('Layouts');
-    }
-
-    public static function getModelLabel(): string
-    {
-        return __('Layout');
-    }
-
-    public static function getPluralModelLabel(): string
-    {
-        return __('Layouts');
-    }
-
-    public static function getNavigationIcon(): ?string
-    {
-        return static::$navigationIcon ?? config('tagixo-primix.icons.layouts', 'pi pi-table');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return static::$navigationGroup ?? config('tagixo-primix.navigation_group');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return static::getModel()::query()->orderByDesc('is_global')->orderBy('name');
-    }
+    protected static string $tagixoType = 'layouts';
 
     public static function table(Table $table): Table
     {
+        $table = parent::table($table);
+
         return $table
             ->columns([
-                TextColumn::make('name')->label(__('Name'))->searchable()->sortable(),
-                IconColumn::make('is_global')->label(__('Global'))->boolean(),
+                ...$table->getColumns(),
                 TextColumn::make('conditions')
                     ->label(__('Applies to'))
                     ->formatStateUsing(static fn (mixed $state): string => static::conditionsSummary($state)),
-                TextColumn::make('updated_at')->label(__('Updated'))->dateTime()->sortable(),
             ])
-            ->headerActions([CreateAction::make()])
-            ->actions([EditAction::make(), DeleteAction::make()])
-            ->bulkActions([DeleteBulkAction::make()]);
+            ->actions([
+                ...static::sectionActions(),
+                ...array_values(array_filter(
+                    $table->getActions(),
+                    // The generic Build opens one scope: a layout has two.
+                    static fn ($action): bool => $action->getName() !== 'build',
+                )),
+            ]);
+    }
+
+    /**
+     * One action per document a layout holds.
+     *
+     * @return list<Action>
+     */
+    public static function sectionActions(): array
+    {
+        return array_map(
+            static fn (string $section): Action => Action::make($section)
+                ->label($section === 'header' ? __('Header') : __('Footer'))
+                ->icon($section === 'header' ? 'pi pi-arrow-up' : 'pi pi-arrow-down')
+                ->url(static fn (Model $record): string => static::builderUrl($record, $section)),
+            LayoutSections::SECTIONS,
+        );
+    }
+
+    /**
+     * The editor of one section. Without a section it is the header, which is
+     * what `LayoutType` opens by default.
+     */
+    public static function builderUrl(Model $record, ?string $section = null): string
+    {
+        return route('tagixo.builder.embed', [
+            'type' => static::tagixoType(),
+            'id' => $record->getKey(),
+            'back' => static::getUrl('index'),
+            ...($section !== null ? ['scope' => $section] : []),
+        ]);
     }
 
     public static function form(Form $form): Form
     {
+        $form = parent::form($form);
+
         return $form->schema([
-            TextInput::make('name')->label(__('Name'))->required()->maxLength(255),
-            Toggle::make('is_global')
-                ->label(__('Global'))
-                ->helperText(__('The fallback for every page no other layout claims. Only one.')),
+            ...$form->getComponents(),
             Repeater::make('conditions')
                 ->label(__('Applies to'))
                 ->helperText(__('A page wears the layout whose condition fits it best.'))
@@ -122,15 +106,6 @@ class LayoutResource extends Resource
                         ->visible(static fn (Get $get): bool => in_array($get('type'), ['model_all', 'model_archive'], true)),
                 ]),
         ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => ListRecords::route('/'),
-            'create' => CreateRecord::route('/create'),
-            'edit' => EditRecord::route('/{record}/edit'),
-        ];
     }
 
     /**

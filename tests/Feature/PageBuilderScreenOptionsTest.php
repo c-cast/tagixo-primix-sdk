@@ -9,14 +9,22 @@ use Tagixo\Primix\Tests\Support\TestPanelProvider;
  * application, and the in-memory database does not survive that.
  */
 
-it('leaves the layouts out when the panel says so', function () {
-    TestPanelProvider::$configure = fn (TagixoPrimixPlugin $plugin) => $plugin->withLayouts(false);
+it('leaves the layouts out when the panel excludes that type', function () {
+    // A layout is a record type now, so it is dropped like any other.
+    TestPanelProvider::$configure = fn (TagixoPrimixPlugin $plugin) => $plugin->except(['layouts']);
     $this->refreshApplication();
 
     expect(Route::has('primix.admin.layouts.index'))->toBeFalse()
-        // The pages are still administered: only that screen is gone.
         ->and(Route::has('primix.admin.pages.index'))->toBeTrue()
         ->and(Route::has('primix.admin.site-settings'))->toBeTrue();
+});
+
+it('leaves the Theme Builder out when the panel says so', function () {
+    TestPanelProvider::$configure = fn (TagixoPrimixPlugin $plugin) => $plugin->withThemeBuilder(false);
+    $this->refreshApplication();
+
+    expect(Route::has('primix.admin.theme-builder'))->toBeFalse()
+        ->and(Route::has('primix.admin.layouts.index'))->toBeTrue();
 });
 
 it('leaves the site settings out when the panel says so', function () {

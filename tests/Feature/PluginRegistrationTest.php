@@ -20,7 +20,9 @@ use Tagixo\Primix\Tests\Support\TestPanelProvider;
 it('gives an admin resource to every installed builder type, and only those', function () {
     $resources = app(TagixoPrimixPlugin::class)->resolveResources();
 
-    expect(array_keys($resources))->toBe(['pages', 'popups', 'global-blocks', 'mails'])
+    // Layouts are a record type of the page builder too: a header and a footer
+    // are documents the editor opens.
+    expect(array_keys($resources))->toBe(['pages', 'popups', 'global-blocks', 'layouts', 'mails'])
         ->and($resources['pages'])->toBe(PageResource::class)
         ->and($resources['mails'])->toBe(MailResource::class);
 });
@@ -51,7 +53,7 @@ it('drops the types a panel excludes, records and builder untouched', function (
     TestPanelProvider::$configure = fn (TagixoPrimixPlugin $plugin) => $plugin->except(['popups', 'global-blocks']);
     $this->refreshApplication();
 
-    expect(array_keys(app(TagixoPrimixPlugin::class)->resolveResources()))->toBe(['pages', 'mails'])
+    expect(array_keys(app(TagixoPrimixPlugin::class)->resolveResources()))->toBe(['pages', 'layouts', 'mails'])
         ->and(app(BuilderTypeRegistry::class)->has('popups'))->toBeTrue();
 });
 

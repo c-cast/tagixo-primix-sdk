@@ -10,6 +10,7 @@ use Tagixo\Primix\Capabilities\Capability;
 use Tagixo\Primix\Resources\DocumentResource;
 use Tagixo\Primix\Resources\FormResource;
 use Tagixo\Primix\Resources\GlobalBlockResource;
+use Tagixo\Primix\Resources\LayoutResource;
 use Tagixo\Primix\Resources\MailResource;
 use Tagixo\Primix\Resources\PageResource;
 use Tagixo\Primix\Resources\PopupResource;
@@ -36,6 +37,7 @@ class TagixoPrimixPlugin implements Plugin
         'pages' => PageResource::class,
         'popups' => PopupResource::class,
         'global-blocks' => GlobalBlockResource::class,
+        'layouts' => LayoutResource::class,
         'forms' => FormResource::class,
         'mails' => MailResource::class,
         'documents' => DocumentResource::class,
@@ -73,9 +75,9 @@ class TagixoPrimixPlugin implements Plugin
 
     protected bool $mediaLibrary = true;
 
-    protected bool $layouts = true;
-
     protected bool $menus = true;
+
+    protected bool $themeBuilder = true;
 
     protected bool $siteSettings = true;
 
@@ -271,21 +273,6 @@ class TagixoPrimixPlugin implements Plugin
     }
 
     /**
-     * Whether the panel administers the layouts a page wears.
-     */
-    public function withLayouts(bool $enabled = true): static
-    {
-        $this->layouts = $enabled;
-
-        return $this;
-    }
-
-    public function layoutsEnabled(): bool
-    {
-        return $this->layouts;
-    }
-
-    /**
      * Whether the panel administers the menus of the site.
      */
     public function withMenus(bool $enabled = true): static
@@ -298,6 +285,22 @@ class TagixoPrimixPlugin implements Plugin
     public function menusEnabled(): bool
     {
         return $this->menus;
+    }
+
+    /**
+     * Whether the panel carries the Theme Builder, where a template is dressed
+     * zone by zone.
+     */
+    public function withThemeBuilder(bool $enabled = true): static
+    {
+        $this->themeBuilder = $enabled;
+
+        return $this;
+    }
+
+    public function themeBuilderEnabled(): bool
+    {
+        return $this->themeBuilder;
     }
 
     /**

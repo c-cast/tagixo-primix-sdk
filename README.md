@@ -84,12 +84,20 @@ MediaPickerField::make('gallery')->images()->multiple()->maxFiles(6);
 **Document builder.** The listing of the documents offers the printed file, from
 the builder's own download route.
 
-**Page builder.** Three screens that are not record types: the **layouts** a page
-wears — administered by what they apply to, since their content is edited from a
-page's header and footer — the **menus** of the site, items and sub-items
-included, and the **site settings** the public site reads (name, default title and
-description, favicon, custom CSS). Turn any of them off with `withLayouts(false)`,
-`withMenus(false)`, `withSiteSettings(false)`.
+**Page builder.** The **Theme Builder**: every template with its three zones —
+header, body, footer — each saying whether it has been built and opening the
+editor where that zone actually lives. A header and a footer belong to the
+template, so they open the layout itself; a body belongs to a page, and a template
+scoped to a model stands for that model's archive or single page, **created the
+moment its body is first opened**. Layouts are a record type of their own
+(`layouts`), so they are listed, created and deleted like everything else, with
+the conditions that decide which pages wear them.
+
+Plus the **menus** of the site, items and sub-items included, and the **site
+settings** the public site reads (name, default title and description, favicon,
+custom CSS). Turn any of them off with `withThemeBuilder(false)`,
+`withMenus(false)`, `withSiteSettings(false)`, or drop the layouts with
+`except(['layouts'])`.
 
 ## Tuning it
 
@@ -103,7 +111,7 @@ TagixoPrimixPlugin::make()
     ->lockFormTarget('app')                       // every form is a panel form
     ->withAppForms(false)                         // or: leave the builder to the universal palette
     ->withMediaGallery(false)                     // no library section (the picker stays)
-    ->withLayouts(false)                          // no layouts section
+    ->withThemeBuilder(false)                     // no Theme Builder
     ->withMenus(false)                            // no menus section
     ->withSiteSettings(false)                     // no site settings screen
     ->withoutCapability('form-builder')           // nothing from that package at all
