@@ -152,7 +152,10 @@ it('administers a layout with its conditions on top of the declared fields', fun
         LayoutResource::form(new Form)->getComponents(),
     );
 
-    // name and is_global come from LayoutType::fields(); the conditions are the
-    // resource's own, because only a layout has them.
-    expect($fields)->toBe(['name', 'is_global', 'conditions']);
+    // name and is_global come from LayoutType::fields(); what the template
+    // claims is the resource's own, because only a layout claims anything.
+    expect($fields)->toBe([
+        'name', 'is_global',
+        'condition_all_pages', 'condition_homepage', 'condition_pages', 'condition_models', 'condition_model_archives',
+    ]);
 });

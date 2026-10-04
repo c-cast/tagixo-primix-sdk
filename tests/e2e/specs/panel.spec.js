@@ -11,9 +11,14 @@ test('the navigation shows what the installed builders bring', async ({ page }) 
 
     const nav = page.locator('nav, aside').first()
 
-    for (const label of ['Pages', 'Popups', 'Layouts', 'Forms', 'Mails', 'Documents', 'Sliders', 'Media', 'Menus', 'Theme Builder', 'Site settings']) {
+    for (const label of ['Pages', 'Popups', 'Forms', 'Mails', 'Documents', 'Sliders', 'Media', 'Menus', 'Theme Builder', 'Site settings']) {
         await expect(nav.getByText(label, { exact: true }).first()).toBeVisible()
     }
+
+    // Templates are not a section of their own: a layout and a template are the
+    // same thing, and the Theme Builder is where you meet it.
+    await expect(nav.getByText('Layouts', { exact: true })).toHaveCount(0)
+    await expect(nav.getByText('Templates', { exact: true })).toHaveCount(0)
 })
 
 test('the record CRUD of the core is off, and the editor is not', async ({ page }) => {

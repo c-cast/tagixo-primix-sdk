@@ -4,9 +4,9 @@ namespace Tagixo\Primix\Resources;
 
 use Illuminate\Database\Eloquent\Model;
 use Primix\Actions\Action;
-use Primix\Forms\Components\Fields\Repeater;
+use Primix\Forms\Components\Fields\Field;
 use Primix\Forms\Components\Fields\Select;
-use Primix\Forms\Components\Utilities\Get;
+use Primix\Forms\Components\Fields\Toggle;
 use Primix\Forms\Form;
 use Primix\Tables\Columns\TextColumn;
 use Primix\Tables\Table;
@@ -25,10 +25,35 @@ use Tagixo\PageBuilder\Services\LayoutSections;
  * global is the fallback for everything that matches nothing. Its body is not
  * here: pages own their body, and a template scoped to a model stands for that
  * model's archive or single page (the Theme Builder shows all three).
+ *
+ * The Theme Builder is the way in, so this resource stays out of the navigation:
+ * a template and its layout are the same thing, seen from two screens.
  */
 class LayoutResource extends TagixoRecordResource
 {
     protected static string $tagixoType = 'layouts';
+
+    /** The Theme Builder is the way in. */
+    protected static bool $shouldRegisterNavigation = false;
+
+    /**
+     * A layout and a template are the same thing seen from two screens, and in a
+     * panel the word is template: that is what the Theme Builder calls them.
+     */
+    public static function getNavigationLabel(): string
+    {
+        return __('Templates');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('Template');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('Templates');
+    }
 
     public static function table(Table $table): Table
     {
@@ -87,42 +112,170 @@ class LayoutResource extends TagixoRecordResource
 
         return $form->schema([
             ...$form->getComponents(),
-            Repeater::make('conditions')
-                ->label(__('Applies to'))
-                ->helperText(__('A page wears the layout whose condition fits it best.'))
-                ->addActionLabel(__('Add a condition'))
-                ->schema([
-                    Select::make('type')
-                        ->label(__('Condition'))
-                        ->options(static::conditionTypes())
-                        ->required(),
-                    Select::make('value')
-                        ->label(__('Page'))
-                        ->options(static fn (): array => static::pageOptions())
-                        ->visible(static fn (Get $get): bool => $get('type') === 'page_id'),
-                    Select::make('model')
-                        ->label(__('Content type'))
-                        ->options(static fn (): array => static::modelOptions())
-                        ->visible(static fn (Get $get): bool => in_array($get('type'), ['model_all', 'model_archive'], true)),
-                ]),
+            ...static::conditionFields(),
         ]);
     }
 
     /**
-     * The conditions an editor can pick here. `LayoutResolver` scores more of
-     * them (a record, a taxonomy term), which a page assigns by itself.
+     * What a template claims, as five plain questions instead of a repeater of
+     * {type, target} rows: every page, the homepage, these pages, everything of
+     * these content types, the archive of these content types.
      *
-     * @return array<string, string>
+     * Flat on purpose. A repeater would have to show the page picker only for
+     * one kind of condition and the content-type picker only for two others, and
+     * a field inside a Primix repeater is rendered whatever its `visible()`
+     * says — so it showed every picker on every row, which is what made the
+     * screen unreadable.
+     *
+     * @return list<Field>
      */
-    public static function conditionTypes(): array
+    public static function conditionFields(): array
     {
         return [
-            'all_pages' => __('All pages'),
-            'homepage' => __('Homepage'),
-            'page_id' => __('One page'),
-            'model_all' => __('Everything of a content type'),
-            'model_archive' => __('The archive of a content type'),
+            Toggle::make('condition_all_pages')
+                ->label(__('Every page'))
+                ->helperText(__('Unless a template claims one of them more precisely.')),
+            Toggle::make('condition_homepage')
+                ->label(__('The homepage')),
+            // A question nobody has answered yet is answered with "none": the
+            // empty list, not null, which a multiple select refuses.
+            Select::make('condition_pages')
+                ->label(__('Specific pages'))
+                ->multiple()
+                ->default([])
+                ->options(static fn (): array => static::pageOptions()),
+            Select::make('condition_models')
+                ->label(__('Everything of these content types'))
+                ->multiple()
+                ->default([])
+                ->options(static fn (): array => static::modelOptions()),
+            Select::make('condition_model_archives')
+                ->label(__('Archive of these content types'))
+                ->multiple()
+                ->default([])
+                ->options(static fn (): array => static::modelOptions()),
         ];
+    }
+
+    /**
+     * A new template lands on its own screen and not in the editor: a header
+     * nobody asked for yet is not where you want to be. It is created already
+     * knowing what it claims, so there is nothing left to come back for.
+     */
+    public static function afterCreateUrl(Model $record): string
+    {
+        return static::getUrl('edit', ['record' => $record->getKey()]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function dataForForm(Model $record, array $data): array
+    {
+        return [...$data, ...static::conditionsToForm($record->conditions)];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function dataForRecord(?Model $record, array $data): array
+    {
+        $data['conditions'] = static::conditionsFromForm($data, $record?->conditions ?? []);
+
+        return $data;
+    }
+
+    /**
+     * The stored conditions as those five answers.
+     *
+     * @return array<string, mixed>
+     */
+    public static function conditionsToForm(mixed $conditions): array
+    {
+        $conditions = is_array($conditions) ? $conditions : [];
+        $answers = [
+            'condition_all_pages' => false,
+            'condition_homepage' => false,
+            'condition_pages' => [],
+            'condition_models' => [],
+            'condition_model_archives' => [],
+        ];
+
+        foreach ($conditions as $condition) {
+            if (! is_array($condition)) {
+                continue;
+            }
+
+            match ($condition['type'] ?? null) {
+                'all_pages' => $answers['condition_all_pages'] = true,
+                'homepage' => $answers['condition_homepage'] = true,
+                'page_id' => $answers['condition_pages'][] = $condition['value'] ?? null,
+                'model_all' => $answers['condition_models'][] = $condition['model'] ?? null,
+                'model_archive' => $answers['condition_model_archives'][] = $condition['model'] ?? null,
+                default => null,
+            };
+        }
+
+        foreach (['condition_pages', 'condition_models', 'condition_model_archives'] as $key) {
+            $answers[$key] = array_values(array_filter($answers[$key], static fn (mixed $value): bool => $value !== null));
+        }
+
+        return $answers;
+    }
+
+    /**
+     * And back. Conditions of a kind this screen does not ask about — a single
+     * record, a taxonomy term, the legacy template types — are assigned
+     * elsewhere and are carried over untouched: a form must not delete what it
+     * cannot see.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    public static function conditionsFromForm(array $data, mixed $existing = []): array
+    {
+        $kept = array_values(array_filter(
+            is_array($existing) ? $existing : [],
+            static fn (mixed $condition): bool => is_array($condition)
+                && ! in_array($condition['type'] ?? null, ['all_pages', 'homepage', 'page_id', 'model_all', 'model_archive'], true),
+        ));
+
+        $conditions = [];
+
+        if (! empty($data['condition_all_pages'])) {
+            $conditions[] = ['type' => 'all_pages'];
+        }
+
+        if (! empty($data['condition_homepage'])) {
+            $conditions[] = ['type' => 'homepage'];
+        }
+
+        foreach (static::values($data['condition_pages'] ?? []) as $page) {
+            $conditions[] = ['type' => 'page_id', 'value' => $page];
+        }
+
+        foreach (static::values($data['condition_models'] ?? []) as $model) {
+            $conditions[] = ['type' => 'model_all', 'model' => $model];
+        }
+
+        foreach (static::values($data['condition_model_archives'] ?? []) as $model) {
+            $conditions[] = ['type' => 'model_archive', 'model' => $model];
+        }
+
+        return [...$conditions, ...$kept];
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    protected static function values(mixed $value): array
+    {
+        return array_values(array_filter(
+            is_array($value) ? $value : [],
+            static fn (mixed $entry): bool => $entry !== null && $entry !== '',
+        ));
     }
 
     /**

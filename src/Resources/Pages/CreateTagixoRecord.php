@@ -35,6 +35,6 @@ class CreateTagixoRecord extends CreateRecord
             ->success()
             ->send();
 
-        $this->redirect($resource::builderUrl($record), navigate: true);
+        $this->redirect($resource::afterCreateUrl($record), navigate: true);
     }
 }

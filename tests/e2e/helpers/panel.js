@@ -13,3 +13,16 @@ export async function typeInto(field, value) {
     await field.pressSequentially(value, { delay: 10 })
     await field.blur()
 }
+
+/**
+ * The switch of a field, addressed by the question it asks.
+ *
+ * Not `getByLabel()`: in Primix 0.7.17 a toggle's label is not bound to the
+ * input it names, so the accessible name is empty. That is a framework bug
+ * with a fix of its own; this suite drives the panel it is given.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+export function switchOf(page, question) {
+    return page.locator('.primix-field', { hasText: question }).getByRole('switch')
+}

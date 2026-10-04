@@ -14,6 +14,18 @@ use Tagixo\Primix\Resources\TagixoRecordResource;
  */
 class EditTagixoRecord extends EditRecord
 {
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        /** @var class-string<TagixoRecordResource> $resource */
+        $resource = $this->resolveResource();
+
+        return $resource::dataForForm($this->record, $data);
+    }
+
     protected function getHeaderActions(): array
     {
         /** @var class-string<TagixoRecordResource> $resource */

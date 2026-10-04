@@ -59,14 +59,91 @@ it('shows the global layout first, then the others by name', function () {
     expect(LayoutResource::getEloquentQuery()->pluck('name')->all())->toBe(['Global', 'Alpha', 'Zebra']);
 });
 
-it('offers the conditions an editor can pick, and the targets they need', function () {
+it('asks what a template claims as five plain questions', function () {
     $page = PageResource::createRecord(['title' => 'About us']);
 
     $fields = collect(LayoutResource::form(new Form)->getComponents())->keyBy->getName();
 
-    expect($fields->keys()->all())->toBe(['name', 'is_global', 'conditions'])
-        ->and(LayoutResource::conditionTypes())->toHaveKeys(['all_pages', 'homepage', 'page_id', 'model_all', 'model_archive'])
-        ->and(LayoutResource::pageOptions())->toBe([$page->getKey() => 'About us']);
+    expect($fields->keys()->all())->toBe([
+        'name', 'is_global',
+        'condition_all_pages', 'condition_homepage', 'condition_pages', 'condition_models', 'condition_model_archives',
+    ])
+        // Pages are picked several at a time: a template dresses more than one.
+        ->and($fields['condition_pages']->isMultiple())->toBeTrue()
+        ->and(LayoutResource::pageOptions())->toBe([$page->getKey() => 'About us'])
+        // Asked when the template is created, too: a template with no
+        // conditions dresses nothing, so there is nothing to come back for.
+        ->and($fields['condition_pages']->operation('create')->isHidden())->toBeFalse()
+        ->and($fields['condition_pages']->operation('edit')->isHidden())->toBeFalse()
+        // An unanswered list is the empty list: left null, the select refuses
+        // its own state and the template cannot be created at all.
+        ->and($fields['condition_pages']->getDefaultValue())->toBe([])
+        ->and($fields['condition_models']->getDefaultValue())->toBe([])
+        ->and($fields['condition_model_archives']->getDefaultValue())->toBe([]);
+});
+
+it('reads the conditions of a layout as those answers', function () {
+    $answers = LayoutResource::conditionsToForm([
+        ['type' => 'homepage'],
+        ['type' => 'page_id', 'value' => 7],
+        ['type' => 'page_id', 'value' => 9],
+        ['type' => 'model_all', 'model' => 'articles'],
+        ['type' => 'model_archive', 'model' => 'products'],
+        // Assigned elsewhere: this screen does not ask about it.
+        ['type' => 'model_record', 'model' => 'articles', 'model_id' => 3],
+    ]);
+
+    expect($answers)->toBe([
+        'condition_all_pages' => false,
+        'condition_homepage' => true,
+        'condition_pages' => [7, 9],
+        'condition_models' => ['articles'],
+        'condition_model_archives' => ['products'],
+    ]);
+});
+
+it('writes them back, and keeps what it never asked about', function () {
+    $existing = [
+        ['type' => 'homepage'],
+        ['type' => 'model_record', 'model' => 'articles', 'model_id' => 3],
+    ];
+
+    $conditions = LayoutResource::conditionsFromForm([
+        'condition_all_pages' => false,
+        'condition_homepage' => false,
+        'condition_pages' => [7, 9],
+        'condition_models' => [],
+        'condition_model_archives' => ['products'],
+    ], $existing);
+
+    expect($conditions)->toBe([
+        ['type' => 'page_id', 'value' => 7],
+        ['type' => 'page_id', 'value' => 9],
+        ['type' => 'model_archive', 'model' => 'products'],
+        // Untouched: a form must not delete what it cannot see.
+        ['type' => 'model_record', 'model' => 'articles', 'model_id' => 3],
+    ]);
+});
+
+it('takes a template through the form and back', function () {
+    $page = PageResource::createRecord(['title' => 'About us']);
+    $layout = Layout::create(['name' => 'Shop', 'conditions' => [['type' => 'homepage']]]);
+
+    LayoutResource::updateRecord($layout, [
+        'name' => 'Shop',
+        ...LayoutResource::conditionsToForm($layout->conditions),
+        'condition_homepage' => false,
+        'condition_pages' => [$page->getKey()],
+    ]);
+
+    expect($layout->refresh()->conditions)->toBe([['type' => 'page_id', 'value' => $page->getKey()]])
+        ->and(LayoutResource::conditionsToForm($layout->conditions)['condition_pages'])->toBe([$page->getKey()]);
+});
+
+it('keeps the layouts out of the navigation, because the Theme Builder is the way in', function () {
+    expect(LayoutResource::shouldRegisterNavigation())->toBeFalse()
+        // The screens are still there: the Theme Builder links to them.
+        ->and(Route::has('primix.admin.layouts.edit'))->toBeTrue();
 });
 
 it('renders the layouts screen with what is there', function () {
@@ -106,4 +183,26 @@ it('stores what the form sent, clearing what was emptied and ignoring the rest',
         ->and($settings['default_title'])->toBeNull()
         ->and($settings['custom_css'])->toBe('body { color: #111; }')
         ->and($settings)->not->toHaveKey('tracking_id');
+});
+
+it('creates a template that already claims something', function () {
+    $page = PageResource::createRecord(['title' => 'About us']);
+
+    $layout = LayoutResource::createRecord([
+        'name' => 'Shop',
+        'is_global' => false,
+        'condition_all_pages' => false,
+        'condition_homepage' => true,
+        'condition_pages' => [$page->getKey()],
+        'condition_models' => [],
+        'condition_model_archives' => [],
+    ]);
+
+    expect($layout->name)->toBe('Shop')
+        ->and($layout->conditions)->toBe([
+            ['type' => 'homepage'],
+            ['type' => 'page_id', 'value' => $page->getKey()],
+        ])
+        // And it lands where it can be dressed, not in a header nobody asked for.
+        ->and(LayoutResource::afterCreateUrl($layout))->toContain('/layouts/'.$layout->getKey().'/edit');
 });

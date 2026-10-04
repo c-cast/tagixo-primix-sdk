@@ -159,6 +159,40 @@ abstract class TagixoRecordResource extends Resource
     }
 
     /**
+     * The record's attributes as the form wants them. A resource whose form asks
+     * its questions differently from the way the record stores them (the
+     * conditions of a layout) translates here, and back in `dataForRecord()`.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function dataForForm(Model $record, array $data): array
+    {
+        return $data;
+    }
+
+    /**
+     * And back: what the form sent, as the type expects it. `$record` is null
+     * while creating.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function dataForRecord(?Model $record, array $data): array
+    {
+        return $data;
+    }
+
+    /**
+     * Where a new record lands. The editor, because an empty draft is worth
+     * nothing until it holds something — unless a type says otherwise.
+     */
+    public static function afterCreateUrl(Model $record): string
+    {
+        return static::builderUrl($record);
+    }
+
+    /**
      * Create a record the way its type does: a page decides its own slug, a mail
      * its untitled name, a document its default sheet. Only the attributes the
      * type accepts on creation reach it — it would drop the others anyway.
@@ -168,6 +202,7 @@ abstract class TagixoRecordResource extends Resource
     public static function createRecord(array $data): Model
     {
         $type = static::builderType();
+        $data = static::dataForRecord(null, $data);
 
         return $type->create(Arr::only($data, array_keys($type->storeRules())));
     }
@@ -181,6 +216,7 @@ abstract class TagixoRecordResource extends Resource
     public static function updateRecord(Model $record, array $data): Model
     {
         $type = static::builderType();
+        $data = static::dataForRecord($record, $data);
 
         return $type->update($record, Arr::only($data, array_keys($type->updateRules($record))));
     }

@@ -1,4 +1,5 @@
 import { expect, test } from '../helpers/fixtures.js'
+import { switchOf, typeInto } from '../helpers/panel.js'
 
 /**
  * The Theme Builder: a template dressed zone by zone. The header belongs to the
@@ -45,4 +46,26 @@ test('the footer of that template opens empty, on the template itself', async ({
     // Same record, the other document.
     expect(page.url()).toContain(`type=layouts&id=${seed.layout.id}`)
     await expect(page.locator('#tagixo-vue')).toBeVisible()
+})
+
+test('a new template is created already claiming something', async ({ page }) => {
+    await page.goto('/admin/theme-builder')
+    await page.getByRole('link', { name: /New template/i }).click()
+    await page.waitForURL(/\/admin\/layouts\/create/)
+
+    await typeInto(page.getByLabel('Name'), 'Homepage template')
+    // The questions are asked here too: a template with no conditions dresses
+    // nothing, so there is nothing to come back for.
+    await switchOf(page, 'The homepage').click()
+
+    await page.getByRole('button', { name: /^Create/ }).click()
+
+    // It lands where it can be dressed further, not in a header nobody asked for.
+    await page.waitForURL(/\/admin\/layouts\/\d+\/edit/)
+    await expect(page.getByLabel('Name')).toHaveValue('Homepage template')
+
+    await page.goto('/admin/theme-builder')
+    const template = page.locator('.tgx-theme-template', { hasText: 'Homepage template' })
+    await expect(template).toContainText('Homepage')
+    await expect(template.locator('.tgx-theme-zone')).toHaveCount(3)
 })
