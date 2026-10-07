@@ -12,6 +12,7 @@ use Primix\Tables\Table;
 use Tagixo\Core\MediaGallery\Models\Media;
 use Tagixo\Core\MediaGallery\Services\MediaService;
 use Tagixo\Primix\Forms\Fields\MediaPickerField;
+use Tagixo\Primix\Tables\Columns\MediaPickerColumn;
 use Tagixo\Primix\Resources\MediaResource;
 use Tagixo\Primix\Resources\Pages\UploadMedia;
 
@@ -154,4 +155,23 @@ it('puts the picker script on the LiVue app of the panel', function () {
     expect($src)->toContain('vendor/tagixo/core/media-picker.js')
         // No version query: a module entry with one forks the ES module graph.
         ->and($src)->not->toContain('?v=');
+});
+
+it('shows in a listing what that field picked', function () {
+    $column = MediaPickerColumn::make('cover')->circular()->size(32);
+
+    expect($column->getView())->toBe('tagixo-primix::tables.columns.media-picker')
+        ->and($column->isCircular())->toBeTrue()
+        ->and($column->getSize())->toBe(32);
+});
+
+it('reads the state the picker writes, one item or several', function () {
+    $column = MediaPickerColumn::make('cover');
+    $one = ['url' => '/storage/a.jpg', 'filename' => 'a.jpg'];
+
+    expect($column->getMediaItems($one))->toBe([$one])
+        ->and($column->getMediaItems([$one, $one]))->toHaveCount(2)
+        // Nothing picked, and nothing recognisable, are the same empty row.
+        ->and($column->getMediaItems(null))->toBe([])
+        ->and($column->getMediaItems('/storage/a.jpg'))->toBe([]);
 });

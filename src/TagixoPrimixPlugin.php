@@ -5,6 +5,7 @@ namespace Tagixo\Primix;
 use Primix\Contracts\Plugin;
 use Primix\Panel;
 use Tagixo\Core\BuilderTypeRegistry;
+use Tagixo\Core\Contracts\HasPlugin;
 use Tagixo\Core\Tagixo;
 use Tagixo\Primix\Capabilities\Capability;
 use Tagixo\Primix\Resources\DocumentResource;
@@ -130,6 +131,30 @@ class TagixoPrimixPlugin implements Plugin
 
         foreach ($this->resolveCapabilities() as $capability) {
             $capability->apply($panel, $this);
+        }
+
+        $this->bootPluginsOfPlugins($panel);
+    }
+
+    /**
+     * A Tagixo plugin that brings its own admin screens says so by implementing
+     * HasPlugin: whatever `getPlugin()` returns is registered here, so a package
+     * that adds a content type (articles, products) needs no panel wiring in the
+     * application that installs it.
+     */
+    protected function bootPluginsOfPlugins(Panel $panel): void
+    {
+        foreach (app(Tagixo::class)->getPlugins() as $plugin) {
+            if (! $plugin instanceof HasPlugin) {
+                continue;
+            }
+
+            $own = $plugin->getPlugin();
+
+            if ($own instanceof Plugin) {
+                $own->register($panel);
+                $own->boot($panel);
+            }
         }
     }
 

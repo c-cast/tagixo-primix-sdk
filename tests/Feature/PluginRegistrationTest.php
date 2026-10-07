@@ -10,6 +10,7 @@ use Tagixo\Primix\Resources\Pages\EditTagixoRecord;
 use Tagixo\Primix\TagixoPrimixPlugin;
 use Tagixo\Primix\Tests\Support\CustomPageResource;
 use Tagixo\Primix\Tests\Support\HouseResource;
+use Tagixo\Primix\Tests\Support\HousesTagixoPlugin;
 use Tagixo\Primix\Tests\Support\TestPanelProvider;
 
 /*
@@ -104,4 +105,15 @@ it('leaves the resources the panel already had alone', function () {
 
     expect($resources)->toContain(HouseResource::class)
         ->and($resources)->toContain(PageResource::class);
+});
+
+it('registers the panel screens a Tagixo plugin brings with its content type', function () {
+    $panel = app(PanelRegistry::class)->get('admin');
+    app(Tagixo::class)->plugin(new HousesTagixoPlugin);
+
+    app(TagixoPrimixPlugin::class)->boot($panel);
+
+    // The application wired nothing: the package said so by implementing
+    // HasPlugin, the way ccast/tagixo-articles does for its three resources.
+    expect($panel->getResources())->toContain(HouseResource::class);
 });
